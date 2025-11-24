@@ -26,15 +26,16 @@ class RedBlackTree {
 		RedBlackTree &operator=(const RedBlackTree &);
 
         void	insert(const T &);
-        void	clear(const T &);
         void	find(const T &);
+        void    deleteNode(const T &);
 
+        void	clear();
     private:
 
         Node<T>    *_root;
         Node<T>    *_tnull;
 
 		void	deleteTree(Node<T> *);
-		void	copyDeep(Node<T> *, Node<T> *);
+		Node<T>	*copyHelper(Node<T> *, Node<T> *);
 		// swap() ??
 };
