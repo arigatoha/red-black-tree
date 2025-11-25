@@ -76,7 +76,7 @@ void RedBlackTree<T>::insert(Node<T> *node) {
 
 template <typename T>
 void RedBlackTree<T>::find(Node<T> *node) {
-
+    
 }
 
 template <typename T>

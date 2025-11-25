@@ -1,21 +1,15 @@
 #pragma once
 
-#define BLACK 1
-#define RED 0
+#include <functional>
 
-template <typename T>
-struct Node {
-    T		val;
-
-    Node	*_parent;
-    Node	*_right;
-    Node	*_left;
-
-	bool	color;
-    // ...
+struct BaseNode {
+    BaseNode	*_parent;
+    BaseNode	*_right;
+    BaseNode	*_left;
 };
 
-template <typename T>
+
+template <typename Key, typename Value, typename Compare = std::less<Key> >
 class RedBlackTree {
     public:
 
@@ -24,6 +18,13 @@ class RedBlackTree {
 
 		RedBlackTree(const RedBlackTree &);
 		RedBlackTree &operator=(const RedBlackTree &);
+
+        class iterator {};
+
+        struct Node : public BaseNode {
+            std::pair<Key, Value>   p;
+            bool                    red;
+        };
 
         void	insert(const T &);
         void	find(const T &);
