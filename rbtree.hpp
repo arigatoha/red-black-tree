@@ -19,6 +19,9 @@ class RedBlackTree {
 		RedBlackTree(const RedBlackTree &);
 		RedBlackTree &operator=(const RedBlackTree &);
 
+        Value    &operator[](const Key &);
+        Value    &at(const Key &);
+
         struct Node : public BaseNode {
             std::pair<const Key, Value>   p;
             bool                        red;
@@ -28,6 +31,7 @@ class RedBlackTree {
         void	insert(const T &);
         void	find(const T &);
         void    deleteNode(const T &);
+        size_type erase( const Key& key );
 
         void	clear();
     private:
@@ -52,8 +56,15 @@ class RedBlackTree {
             
                 base_iterator(const base_iterator &) = default;
                 base_iterator &operator=(const base_iterator &) = default;
-
-                operator++(int);
+// 1)go to right son then max left
+// 
+// 2.1)if no right son and you are a left son, go to parent
+// 
+// 2.2)if no right son and you are a right son go to grandparent (in the loop?),
+//       if grandparent is root return .end()
+                base_iterator &operator++(int) {
+                    if (this->ptr)
+                }
                 operator++();
                 operator*();
                 operator->();
