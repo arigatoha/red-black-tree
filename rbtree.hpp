@@ -19,12 +19,11 @@ class RedBlackTree {
 		RedBlackTree(const RedBlackTree &);
 		RedBlackTree &operator=(const RedBlackTree &);
 
-        class iterator {};
-
         struct Node : public BaseNode {
-            std::pair<Key, Value>   p;
-            bool                    red;
+            std::pair<const Key, Value>   p;
+            bool                        red;
         };
+
 
         void	insert(const T &);
         void	find(const T &);
@@ -39,4 +38,29 @@ class RedBlackTree {
 		void	deleteTree(Node<T> *);
 		Node<T>	*copyHelper(Node<T> *, Node<T> *);
 		// swap() ??
+    public:
+        template <bool isConst>
+        class base_iterator {
+            public:
+                using pair = std::pair<Key, Value>;
+                using pointer_type = std::conditional_t<isConst, const pair*, pair*>
+                using reference_type = std::conditional_t<isConst, const pair&, pair&>
+                using value_type = pair;
+
+                using iterator = base_iterator<false>;
+                using const_iterator = base_iterator<true>;
+            
+                base_iterator(const base_iterator &) = default;
+                base_iterator &operator=(const base_iterator &) = default;
+
+                operator++(int);
+                operator++();
+                operator*();
+                operator->();
+
+            private:
+                pointer_type ptr;
+                base_iterator(pair *p) : ptr(p) {}
+        }
+
 };
