@@ -49,14 +49,25 @@ class MyMap {
         // void		deleteNode(const T &);
         // iterator	erase( const Key& key );
 
-		template <bool isConst>
-		class base_iterator;
+        template <bool isConst>
+        class base_iterator;
+
+        using iterator = base_iterator<false>;
+        using const_iterator = base_iterator<true>;
 		// constexpr if map is const then iterator is const ?
-        base_iterator<>   begin() {
+        iterator   begin() {
             return _begin;
         }
 
-        base_iterator   end() {
+        const_iterator  begin() const {
+            return _begin;
+        }
+
+        iterator   end() {
+            return _fakenode;
+        }
+
+        const_iterator   end() const {
             return _fakenode;
         }
 
@@ -81,8 +92,7 @@ class MyMap {
                 using reference_type = std::conditional_t<isConst, const node&, node&>;
                 using T_type = node;
 
-                using iterator = base_iterator<false>;
-                using const_iterator = base_iterator<true>;
+
             
                 base_iterator(const base_iterator &) = default;
                 base_iterator &operator=(const base_iterator &) = default;
