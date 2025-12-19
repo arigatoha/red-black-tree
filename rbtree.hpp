@@ -6,24 +6,32 @@ struct BaseNode {
     BaseNode	*_parent;
     BaseNode	*_right;
     BaseNode	*_left;
+
+	BaseNode() : _parent(nullptr), _right(nullptr), _left(nullptr) {}
+	~BaseNode() = default;
 };
 
-
-template <typename Key, typename T, typename Compare = std::less<Key> >
-class RedBlackTree {
+/*
+Plan
+1) exception safety
+2) support of custom Allocator
+3) support of custom Comparator
+4) constexp
+...
+*/
+template <typename Key, typename T, 
+typename Compare = std::less<Key>,
+class Allocator = std::allocator<std::pair<const Key, T> > >
+class MyMap {
     public:
+		MyMap() : _fakenode(), _begin(_fakenode), _sz(0), _comp(), _alloc() {}
+		~MyMap() {}
 
-		RedBlackTree() {
-            BaseNode fake = {nullptr, nullptr, nullptr};
-            _fakenode = fake;
-            _begin = _fakenode;
-            _sz = 0;
-            _comp = Compare; 
-        }
-		~RedBlackTree() {}
+		MyMap(const MyMap &) = default;
+		MyMap(MyMap &&) = default;
 
-		RedBlackTree(const RedBlackTree &) = default;
-		RedBlackTree &operator=(const RedBlackTree &) = default;
+		MyMap &operator=(const MyMap &) = default;
+		MyMap &operator=(MyMap &&) = default;
 
         T    &operator[](const Key &) {
 			
@@ -36,12 +44,15 @@ class RedBlackTree {
         };
 
 
-        void	insert(const T &);
-        void	find(const T &);
-        void    deleteNode(const T &);
-        size_type erase( const Key& key );
+        // void		insert(const T &);
+        // void		find(const T &);
+        // void		deleteNode(const T &);
+        // iterator	erase( const Key& key );
 
-        base_iterator   begin() {
+		template <bool isConst>
+		class base_iterator;
+		// constexpr if map is const then iterator is const ?
+        base_iterator<>   begin() {
             return _begin;
         }
 
@@ -56,6 +67,7 @@ class RedBlackTree {
         BaseNode    *_begin;
         size_t      _sz;
         Compare     _comp;
+		[[no_unique_address]] Allocator	_alloc;
 
 		void	deleteTree();
 		// Node<T>	*copyHelper(Node<T> *, Node<T> *);
@@ -65,8 +77,8 @@ class RedBlackTree {
         class base_iterator {
             public:
                 using node = Node;
-                using pointer_type = std::conditional_t<isConst, const node*, node*>
-                using reference_type = std::conditional_t<isConst, const node&, node&>
+                using pointer_type = std::conditional_t<isConst, const node*, node*>;
+                using reference_type = std::conditional_t<isConst, const node&, node&>;
                 using T_type = node;
 
                 using iterator = base_iterator<false>;
@@ -74,6 +86,9 @@ class RedBlackTree {
             
                 base_iterator(const base_iterator &) = default;
                 base_iterator &operator=(const base_iterator &) = default;
+
+				base_iterator() = default;
+				~base_iterator() = default;
 // 1)go to right son then max left
 // 
 // 2.1)if no right son and you are a left son, go to parent
@@ -124,6 +139,6 @@ class RedBlackTree {
             private:
                 pointer_type ptr;
                 base_iterator(node *n) : ptr(n) {}
-        }
+        };
 
 };
