@@ -1,4 +1,4 @@
-// #include "rbtree.hpp"
+#include "rbtree.hpp"
 
 // template <typename T>
 // RedBlackTree<T>::RedBlackTree() {
