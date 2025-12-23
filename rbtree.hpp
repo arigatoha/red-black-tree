@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <stdexcept>
+#include <memory>
 
 struct BaseNode {
     BaseNode	*_parent;
@@ -85,9 +86,31 @@ class MyMap {
 
 		}
 
+	private:
+		template< class _Up, class _Vp = std::remove_reference<_Up> >
+		static bool constexpr __usable_key = std::logical_or (
+			std::is_same<const _Vp, const Key>,
+			std::logical_and (
+				std::is_scalar(_Vp), std::is_scalar(Key)
+			)
+		);
+
+	public:
+		/*Basically try_emplace, doesn't wastefully allocate obj if the key already exists*/
 		template< class... Args >
 		std::pair<iterator, bool>		emplace(Args&&... args) {
-			std::forward<Args>(args)...
+			// test to pass more than 1 right pair, might need another if constexpr
+			auto&& [_a, _v] = std::make_pair<Args&...>(args...);
+			if constexpr (__usable_key(decltype(_a))) {
+				const Key &__k = _a;
+				iterator it = lower_bound(__k);
+				if (it == end() || (*it).first != __k) {
+					emplace_hint()
+					return {it, true};
+				}
+				return {it, false};
+			}
+			return // std::allocator_traits<_alloc>::construct(std::forward<Args>(args)...)
 		}
 
         template< class K >
@@ -111,6 +134,28 @@ class MyMap {
             }
             return end();
         }
+
+		template< class K >
+		iterator	lower_bound(const K &x) {
+            iterator it = begin();
+            for (;;) {
+                if (*it >= x)
+                    return it;
+                *it < x ? ++it : --it;
+            }
+            return end();
+		}
+
+		template< class K >
+		const_iterator	lower_bound(const K &x) const{
+            const_iterator it = begin();
+            for (;;) {
+                if (*it >= x)
+                    return it;
+                *it < x ? ++it : --it;
+            }
+            return end();
+		}
 
 
         // void		deleteNode(const T &);
