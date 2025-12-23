@@ -3,6 +3,7 @@
 #include <functional>
 #include <stdexcept>
 #include <memory>
+#include <type_traits>
 
 struct BaseNode {
     BaseNode	*_parent;
@@ -83,34 +84,43 @@ class MyMap {
         std::pair<iterator, bool>		insert(P &&value)
 		requires requires {std::is_constructible<value_type, P&&>::value == true;}
 		{
-
+			return emplace(std::forward<P>(value));
 		}
 
 	private:
 		template< class _Up, class _Vp = std::remove_reference<_Up> >
-		static bool constexpr __usable_key = std::logical_or (
-			std::is_same<const _Vp, const Key>,
-			std::logical_and (
-				std::is_scalar(_Vp), std::is_scalar(Key)
-			)
-		);
+		static bool constexpr __usable_key =
+			std::disjunction<std::is_same<const _Vp, const Key>,
+			std::conjunction<std::is_scalar<_Vp>, std::is_scalar<Key> > >();
 
+		template< class... Args >
+		void emplace_hint(iterator &pos, Args&&... args) {
+			/*
+				allocate mem
+				construct obj
+				check if tree is balanced
+				rotate tree
+			*/
+			std::allocator_traits<_alloc>::allocate(_alloc, )
+			std::allocator_traits<_alloc>::construct(std::forward<Args>(args)...)
+		}
+			
 	public:
 		/*Basically try_emplace, doesn't wastefully allocate obj if the key already exists*/
 		template< class... Args >
 		std::pair<iterator, bool>		emplace(Args&&... args) {
 			// test to pass more than 1 right pair, might need another if constexpr
-			auto&& [_a, _v] = std::make_pair<Args&...>(args...);
-			if constexpr (__usable_key(decltype(_a))) {
+			auto&& [_a, _v] = std::make_pair<Args&&...>(args...); // 1 or 2 ampersands?
+			if constexpr (__usable_key<decltype(_a)>) {
 				const Key &__k = _a;
 				iterator it = lower_bound(__k);
 				if (it == end() || (*it).first != __k) {
-					emplace_hint()
+					emplace_hint(it, std::forward<Args>(args)...);
 					return {it, true};
 				}
 				return {it, false};
 			}
-			return // std::allocator_traits<_alloc>::construct(std::forward<Args>(args)...)
+			return ;
 		}
 
         template< class K >
