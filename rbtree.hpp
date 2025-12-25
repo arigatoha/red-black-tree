@@ -5,13 +5,26 @@
 #include <memory>
 #include <type_traits>
 
-struct BaseNode {
-    BaseNode	*_parent;
-    BaseNode	*_right;
-    BaseNode	*_left;
+template <typename _Key, typename _Val, typename _Compare,
+typename _Alloc = std::allocator<_Val> >
+class rbtree {
+	private:
+		struct BaseNode {
+		    BaseNode	*_parent;
+		    BaseNode	*_right;
+		    BaseNode	*_left;
+		};
 
-	BaseNode() : _parent(nullptr), _right(nullptr), _left(nullptr) {}
-	~BaseNode() = default;
+		struct Node : public BaseNode {
+            _Val			value;		
+            bool			red;
+        };
+	
+	public:
+		void	rb_insert_fixup(Node) {
+			while ()
+		}
+
 };
 
 /*
@@ -75,11 +88,6 @@ class MyMap {
             }
         }
 
-        struct Node : public BaseNode {
-            std::pair<const Key, T>   p;
-            bool                        red;
-        };
-
 		template< class P >
         std::pair<iterator, bool>		insert(P &&value)
 		requires requires {std::is_constructible<value_type, P&&>::value == true;}
@@ -101,10 +109,12 @@ class MyMap {
 				check if tree is balanced
 				rotate tree
 			*/
-			std::allocator_traits<_alloc>::allocate(_alloc, )
-			std::allocator_traits<_alloc>::construct(std::forward<Args>(args)...)
+			std::allocator_traits<_alloc>::allocate(_alloc, 1);
+			std::allocator_traits<_alloc>::construct(_alloc, pos, std::forward<Args>(args)...);
+			rbtree::rb_insert_fixup();
 		}
 			
+
 	public:
 		/*Basically try_emplace, doesn't wastefully allocate obj if the key already exists*/
 		template< class... Args >
@@ -191,6 +201,7 @@ class MyMap {
         void	clear();
     private:
 
+		rbtree		_map_tree;
         BaseNode    *_fakenode;
         BaseNode    *_begin;
         size_t      _sz;
