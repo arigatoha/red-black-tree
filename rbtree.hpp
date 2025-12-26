@@ -39,51 +39,26 @@ class Rbtree {
 		BaseNode    *_fakenode;
         BaseNode    *_begin;
 	public:
-		void	right_rotation(Node &x) {
-			BaseNode	*grand = x->_parent->_parent;
-			BaseNode	*parent = x->_parent;
-			BaseNode	*bro = x->_parent->_right;
+		static void	rotate_right(BaseNode &__x) {
+			const BaseNode __y = __x._left;
 
-			grand->_left = bro;
-			if (grand->_left != _fakenode)
-				bro->_parent = grand;
- 
-			parent->_parent = grand->_parent;
-			if (grand->_parent == _fakenode || grand == grand->_parent->_left)
-				grand->_parent->_left = parent;
+			__x.left = __y._right;
+			if (__y._right != _fakenode)
+				__y._right._parent = __x._left;
+			
+			__y._parent = __x._parent;
+			if (__x == __x._parent._right)
+				__x._parent._right = __y;
 			else
-				grand->_parent->_right = parent;
+				__x._parent._left = __y;
 
-			parent->_right = grand;
-			grand->_parent = parent;
+			__y._right = __x;
+			__x._parent = __y;
 		}
 
-		void	left_rotation(Node &x) {
-			BaseNode	*grand = x->_parent->_parent;
-			BaseNode	*parent = x->_parent;
-			BaseNode	*bro = x->_parent->_left;
-
-			grand->_right = bro;
-			if (grand->_right != _fakenode)
-				bro->_parent = grand;
- 
-			parent->_parent = grand->_parent;
-			if (grand->_parent == _fakenode || grand == grand->_parent->_right)
-				grand->_parent->_right = parent;
-			else
-				grand->_parent->_left = parent;
-
-			parent->_left = grand;
-			grand->_parent = parent;
+		static void	rotate_left(BaseNode &x) {
+			//tODO
 		}
-
-		// void	left_right_rotation() {
-
-		// }
-
-		// void	right_left_rotation() {
-
-		// }
 
 		// void	insert_fixup(Node) {
 		// 	while ()
