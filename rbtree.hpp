@@ -116,8 +116,32 @@ class Rbtree {
 						rotate_left(__x);
 					}
 				}
-				_fakenode->_left.red = false;
 			}
+			_fakenode->_left.red = false;
+		}
+
+		std::pair<bool, iterator>	insert(Node z) {
+			Node y = _fakenode;
+			Node x = _fakenode._left;
+			while (x != _fakenode) {
+				y = x;
+				if (z.value < x.value)
+					x = x._left;
+				else if (z.value > x.value)
+					x = x._right;
+				else
+					return {false, iterator(x)};
+			}
+			z._parent = y;
+			if (z.value < y.value)
+				y._left = z;
+			else
+				y._right = z;
+			z.red = true;
+			z._left = _fakenode;
+			z._right = _fakenode;
+
+			return {true, iterator(z)};
 		}
 
 };
