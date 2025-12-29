@@ -29,11 +29,11 @@ class Rbtree {
 		    BaseNode	*_parent;
 		    BaseNode	*_right;
 		    BaseNode	*_left;
+			bool			red;
 		};
 
 		struct Node : public BaseNode {
             _Val			value;		
-            bool			red;
         };
 	
 		BaseNode    *_fakenode;
@@ -56,13 +56,69 @@ class Rbtree {
 			__x._parent = __y;
 		}
 
-		static void	rotate_left(BaseNode &x) {
-			//tODO
+		static void	rotate_left(BaseNode &__x) {
+			const BaseNode __y = __x._right;
+
+			__x._right = __y._left;
+			if (__y._left != _fakenode)
+				__y._left._parent = __x;
+			
+			__y._parent = __x._parent;
+			if (__x == __x._parent._right)
+				__x._parent._right = __y;
+			else
+				__x._parent._left = __y;
+
+			__y._left = __x;
+			__x._parent = __y;
 		}
 
-		// void	insert_fixup(Node) {
-		// 	while ()
-		// }
+		void	insert_fixup(BaseNode &__x) {
+			while (__x != _fakenode._left && __x._parent.red) {
+				const BaseNode __xpp = __x._parent._parent;
+				if (__xpp == _fakenode) {
+					_fakenode._left.red = false;
+					return;
+				}
+				if (__xpp._left == __x._parent) {
+					const BaseNode y = __xpp._right;
+					if (y.red) {
+						__x._parent.red = false;
+						__xpp.red = true;
+						y.red = false;
+						__x = __xpp;
+					}
+					else {
+						if (__x == __x._parent._right) {
+							__x = __x._parent;
+							rotate_left(__x);
+						}
+						__x._parent.red = false;
+						__xpp.red = true;
+						rotate_right(__xpp);
+					}
+				}
+				else {
+					const BaseNode y = __xpp._left;
+					if (y.red) {
+						y.red = false;
+						__x._parent.red = false;
+						__xpp.red = true;
+						__x = __xpp;
+					}
+					else {
+						if (__x == __x._parent._left) {
+							__x = __x._parent;
+							rotate_right(__x);
+						}
+						__x._parent.red = false;
+						__xpp.red = true;
+						rotate_left(__x);
+					}
+				}
+				_fakenode->_left.red = false;
+			}
+		}
 
 };
 
