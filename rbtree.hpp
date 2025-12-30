@@ -9,7 +9,11 @@ template <typename _Key, typename _Val, typename _Compare,
 typename _Alloc = std::allocator<_Val> >
 class Rbtree {
 	public:
-		Rbtree() = default;
+		Rbtree() {
+			_header.red = true;
+			_header._parent = nullptr;
+			_header._left = _header._right = &_header;
+		}
 		Rbtree(const _Compare &comparator);
 		Rbtree(const _Alloc &allocator);
 		Rbtree(const _Compare &comparator, const _Alloc &allocator);
@@ -25,35 +29,37 @@ class Rbtree {
 		class base_iterator;
 		using iterator = base_iterator<false>;
         using const_iterator = base_iterator<true>;
-		using Base__ptr = BaseNode*;
 	private:
 		[[no_unique_address]] _Alloc	_alloc;
 		[[no_unique_address]] _Compare	_comp;
 
 		struct BaseNode {
-		    BaseNode	*_parent;
-		    BaseNode	*_right;
-		    BaseNode	*_left;
-			bool			red;
+			typedef BaseNode* _Base_ptr;
+
+		    _Base_ptr	_parent;
+		    _Base_ptr	_right;
+		    _Base_ptr	_left;
+			bool		red;
 		};
 
 		struct Node : public BaseNode {
             _Val			value;		
         };
 	
-		Base__ptr    _fakenode;
-        Base__ptr    _begin;
+		BaseNode    _header;
 	
 	public:
-		static void	rotate_right(Base__ptr __x, Base__ptr &_fakenode) {
+		static void	rotate_right(BaseNode* __x, BaseNode* &root) {
 			const BaseNode __y = __x._left;
 
 			__x.left = __y._right;
-			if (__y._right != _fakenode)
+			if (__y._right)
 				__y._right._parent = __x._left;
-			
 			__y._parent = __x._parent;
-			if (__x == __x._parent._right)
+			
+			if (__x == root)
+				root = __y;
+			else if (__x == __x._parent._right)
 				__x._parent._right = __y;
 			else
 				__x._parent._left = __y;
@@ -62,15 +68,17 @@ class Rbtree {
 			__x._parent = __y;
 		}
 
-		static void	rotate_left(Base__ptr __x, Base__ptr &_fakenode) {
+		static void	rotate_left(BaseNode* __x, BaseNode* &root) {
 			const BaseNode __y = __x._right;
 
 			__x._right = __y._left;
-			if (__y._left != _fakenode)
+			if (__y._left)
 				__y._left._parent = __x;
-			
 			__y._parent = __x._parent;
-			if (__x == __x._parent._right)
+
+			if (__x == root)
+				root = __y;
+			else if (__x == __x._parent._right)
 				__x._parent._right = __y;
 			else
 				__x._parent._left = __y;
@@ -80,10 +88,9 @@ class Rbtree {
 		}
 
 		void	insert_fixup(BaseNode &__x) {
-			while (__x != _fakenode._left && __x._parent.red) {
+			while (__x != _header._parent && __x._parent.red) {
 				const BaseNode __xpp = __x._parent._parent;
-				if (__xpp == _fakenode) {
-					_fakenode._left.red = false;
+				if (__xpp == _header) {
 					return;
 				}
 				if (__xpp._left == __x._parent) {
@@ -123,13 +130,13 @@ class Rbtree {
 					}
 				}
 			}
-			_fakenode->_left.red = false;
+			_header._parent.red = false;
 		}
 
 		std::pair<bool, iterator>	insert(Node z) {
-			Node y = _fakenode;
-			Node x = _fakenode._left;
-			while (x != _fakenode) {
+			Node y = _header;
+			Node x = _header._parent;
+			while (x) {
 				y = x;
 				if (z.value < x.value)
 					x = x._left;
@@ -139,32 +146,43 @@ class Rbtree {
 					return {false, iterator(x)};
 			}
 			z._parent = y;
-			if (z.value < y.value)
+			if (y == _header) {
+				_header._parent = z;
+				_header._right = _header._left = z;
+			}
+			else if (z.value < y.value) {
 				y._left = z;
-			else
+				if (y == _header._left)
+					_header._left = z;
+			}
+			else {
 				y._right = z;
+				if (y == _header._right)
+					_header._right = z;
+			}
 			z.red = true;
-			z._left = _fakenode;
-			z._right = _fakenode;
-
+			z._left = nullptr;
+			z._right = nullptr;
+			insert_fixup(z);
+			
 			return {true, iterator(z)};
 		}
 
 		// constexpr if map is const then iterator is const ?
         iterator   begin() {
-            return _fakenode->_left;
-        }
+            return iterator(_header._left);
+		}
 
         const_iterator  begin() const {
-            return _fakenode->_left;
+            return const_iterator(_header._left);
         }
 
         iterator   end() {
-            return _fakenode;
+            return iterator(&_header);
         }
 
         const_iterator   end() const {
-            return _fakenode;
+            return const_iterator(&_header);
         }
 		public:
 			template <bool isConst>
@@ -174,13 +192,10 @@ class Rbtree {
 					using pointer_type = std::conditional_t<isConst, const node*, node*>;
 					using reference_type = std::conditional_t<isConst, const node&, node&>;
 					using T_type = node;
-
-
 				
 					base_iterator(const base_iterator &) = default;
 					base_iterator &operator=(const base_iterator &) = default;
 
-					base_iterator(pointer_type node, pointer_type fakenode) : _ptr(node), _sentinel(fakenode) {}
 					base_iterator() = default;
 					~base_iterator() = default;
 	// 1)go to right son then max left
@@ -192,38 +207,19 @@ class Rbtree {
 					base_iterator operator++(int) { //COPy
 						base_iterator copy = *this;
 
-						if (Node *next = this->_ptr->_right && next != _sentinel) {
-							for (;next != _sentinel; next = next->_left) {}
-							this->_ptr = next;
-						}
-						else { 
-							if (this->_ptr == this->_ptr->_parent._left) {
-								this->_ptr = this->_ptr->_parent;
-							}
-							else {
-								this->_ptr = _sentinel;
-							}
-						}
+						_ptr = rbtree_iterator_increment(_ptr);
+
 						return copy;
 					}
-					base_iterator    &operator++() { // NO COPY
-						if (Node *next = this->_ptr->_right && next != _sentinel) {
-							for (;next != _sentinel; next = next->_left) {}
-							this->_ptr = next;
-						}
-						else if (this->_ptr->_right == _sentinel) { 
-							if (this->_ptr == this->_ptr->_parent._left) {
-								this->_ptr = this->_ptr->_parent;
-							}
-							else {
-								this->_ptr = _sentinel;
-							}
-						}
+					base_iterator    &operator++() // NO COPY
+					{
+						_ptr = rbtree_iterator_increment(_ptr);
+
 						return *this;
 					}
 
-					base_iterator    &operator*() {
-						return *this;
+					node    &operator*() {
+						return *_ptr;
 					}
 
 					base_iterator *operator->() {
@@ -232,7 +228,24 @@ class Rbtree {
 
 				private:
 					pointer_type	_ptr;
-					pointer_type	_sentinel;
 					base_iterator(node *n) : _ptr(n) {}
+			
+					static BaseNode	*rbtree_iterator_increment(BaseNode	*x) {
+						if (x->_right) {
+							for (;x != nullptr; x = x->_left) {}
+							x = x->_left;
+						}
+						else { 
+							const BaseNode y = x->_parent;
+							while (x == y._right) {
+								x = y;
+								y = y._parent;
+							}
+							if (x->_right == y)
+								x = y; // single node
+						}
+						return x;
+					}
+					
 			};
 };
