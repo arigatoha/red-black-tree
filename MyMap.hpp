@@ -1,9 +1,6 @@
 #pragma once
 
 #include "rbtree.hpp"
-
-#pragma once
-
 #include <functional>
 #include <stdexcept>
 #include <memory>
@@ -21,7 +18,18 @@ template <typename Key, typename T,
 typename Compare = std::less<Key>,
 class Allocator = std::allocator<std::pair<const Key, T> > >
 class MyMap {
-    public:
+	private:
+
+		ft::Rbtree<Key,T,Compare,Allocator>		_map_tree;
+
+        size_t      _sz;
+        Compare     _comp;
+		[[no_unique_address]] Allocator	_alloc;
+
+		void	deleteTree();
+		// Node<T>	*copyHelper(Node<T> *, Node<T> *);
+		// swap() ??
+	public:
 		struct Node;
 
 		template< class Iter, class NodeType >
@@ -48,8 +56,9 @@ class MyMap {
 		using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 		using node_type = struct Node;
 		using insert_return_type = struct insert_return_t<iterator, node_type>; // iter const or not?
+
 	public:
-		MyMap() : _fakenode(), _begin(_fakenode), _sz(0), _comp(), _alloc() {}
+		MyMap() : _sz(0), _comp(), _alloc() {}
 		~MyMap() {}
 
 		MyMap(const MyMap &) = default;
@@ -70,136 +79,60 @@ class MyMap {
             }
         }
 
-		template< class P >
-        std::pair<iterator, bool>		insert(P &&value)
-		requires requires {std::is_constructible<value_type, P&&>::value == true;}
-		{
-			return emplace(std::forward<P>(value));
-		}
+		// template< class P >
+        // std::pair<iterator, bool>		insert(P &&value)
+		// requires requires {std::is_constructible<value_type, P&&>::value == true;}
+		// {
+		// 	return emplace(std::forward<P>(value));
+		// }
 
-	private:
-		template< class _Up, class _Vp = std::remove_reference<_Up> >
-		static bool constexpr __usable_key =
-			std::disjunction<std::is_same<const _Vp, const Key>,
-			std::conjunction<std::is_scalar<_Vp>, std::is_scalar<Key> > >();
-// 
 		template< class... Args >
-		void emplace_hint(iterator &pos, Args&&... args) {
-			/*
-				allocate mem
-				construct obj
-				check if tree is balanced
-				rotate tree
-			*/
-			std::allocator_traits<_alloc>::allocate(_alloc, 1);
-			std::allocator_traits<_alloc>::construct(_alloc, pos, std::forward<Args>(args)...);
-			Rbtree::rb_insert_fixup();
+		std::pair<iterator, bool>		try_emplace(Args&&... args) {
+			_map_tree::try_emplace(args...);
 		}
-			// 
-// 
-	public:
-		/*Basically try_emplace, doesn't wastefully allocate obj if the key already exists*/
-		template< class... Args >
-		std::pair<iterator, bool>		emplace(Args&&... args) {
-			// test to pass more than 1 right pair, might need another if constexpr
-			auto&& [_a, _v] = std::make_pair<Args&&...>(args...); // 1 or 2 ampersands?
-			if constexpr (__usable_key<decltype(_a)>) {
-				const Key &__k = _a;
-				iterator it = lower_bound(__k);
-				if (it == end() || (*it).first != __k) {
-					emplace_hint(it, std::forward<Args>(args)...);
-					return {it, true};
-				}
-				return {it, false};
-			}
-			return ;
+		iterator		find(const Key &x) {
+			return _map_tree.find(x);
 		}
 
-        template< class K >
-        iterator		find(const K &x) {
-            iterator it = begin();
-            for (;;) {
-                if (*it == x)
-                    return it;
-                *it < x ? --it : ++it;
-            }
-            return end();
-        }
-
-        template< class K >
-        const_iterator		find(const K &x) const{
-            const_iterator it = begin();
-            for (;;) {
-                if (*it == x)
-                    return it;
-                *it < x ? --it : ++it;
-            }
-            return end();
-        }
-// 
-		template< class K >
-		iterator	lower_bound(const K &x) {
-            iterator it = begin();
-            for (;;) {
-                if (*it >= x)
-                    return it;
-                *it < x ? ++it : --it;
-            }
-            return end();
+		const_iterator		find(const Key &x) const{
+			return _map_tree.find(x);
 		}
 
-		template< class K >
-		const_iterator	lower_bound(const K &x) const{
-            const_iterator it = begin();
-            for (;;) {
-                if (*it >= x)
-                    return it;
-                *it < x ? ++it : --it;
-            }
-            return end();
+		iterator	lower_bound(const Key &x) {
+			return _map_tree.lower_bound(x);
 		}
 
+		const_iterator	lower_bound(const Key &x) const{
+			return _map_tree.lower_bound(x);
+		}
 
         // void		deleteNode(const T &);
         // iterator	erase( const Key& key );
 
 		// constexpr if map is const then iterator is const ?
         iterator   begin() {
-            return _fakenode->_left;
-        }
+			return _map_tree.begin();
+		}
 
         const_iterator  begin() const {
-            return _fakenode->_left;
-        }
+			return _map_tree.begin();
+		}
 
         iterator   end() {
-            return _fakenode;
+			return _map_tree.end();
         }
 
         const_iterator   end() const {
-            return _fakenode;
+			return _map_tree.end();
         }
 
-        void	clear();
-    private:
+        // void	clear();
 
-		Rbtree		_map_tree;
-
-        size_t      _sz;
-        Compare     _comp;
-		[[no_unique_address]] Allocator	_alloc;
-
-		void	deleteTree();
-		// Node<T>	*copyHelper(Node<T> *, Node<T> *);
-		// swap() ??
-
-		public:
-
-        template< class Iter, class NodeType >
-		struct insert_return_t {
-			Iter		pos;
-			bool		inserted;
-			NodeType	node;
-		};
+        // template< class Iter, class NodeType >
+		// struct insert_return_t {
+		// 	Iter		pos;
+		// 	bool		inserted;
+		// 	NodeType	node;
+		// };
 
 };
