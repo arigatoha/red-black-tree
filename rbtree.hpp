@@ -55,95 +55,104 @@ namespace ft {
 		
 		public:
 			static void	rotate_right(BaseNode* __x, BaseNode* &root) {
-				const BaseNode __y = __x._left;
+				const BaseNode __y = __x->_left;
 
-				__x.left = __y._right;
+				__x->_left = __y._right;
 				if (__y._right)
-					__y._right._parent = __x._left;
-				__y._parent = __x._parent;
+					__y._right->_parent = __x->_left;
+				__y._parent = __x->_parent;
 				
 				if (__x == root)
 					root = __y;
-				else if (__x == __x._parent._right)
-					__x._parent._right = __y;
+				else if (__x == __x->_parent->_right)
+					__x->_parent->_right = __y;
 				else
-					__x._parent._left = __y;
+					__x->_parent->_left = __y;
 
 				__y._right = __x;
-				__x._parent = __y;
+				__x->_parent = __y;
 			}
 
 			static void	rotate_left(BaseNode* __x, BaseNode* &root) {
-				const BaseNode __y = __x._right;
+				const BaseNode __y = __x->_right;
 
-				__x._right = __y._left;
+				__x->_right = __y._left;
 				if (__y._left)
-					__y._left._parent = __x;
-				__y._parent = __x._parent;
+					__y._left->_parent = __x;
+				__y._parent = __x->_parent;
 
 				if (__x == root)
 					root = __y;
-				else if (__x == __x._parent._right)
-					__x._parent._right = __y;
+				else if (__x == __x->_parent->_right)
+					__x->_parent->_right = __y;
 				else
-					__x._parent._left = __y;
+					__x->_parent->_left = __y;
 
 				__y._left = __x;
-				__x._parent = __y;
+				__x->_parent = __y;
 			}
 
 			void insert_fixup(BaseNode &__x) {
-				while (__x != _header._parent && __x._parent.red) {
-					const BaseNode __xpp = __x._parent._parent;
-					if (__xpp == _header) {
-						return;
-					}
+				while (&__x != _header._parent && __x._parent->red) {
+					const BaseNode __xpp = __x._parent->_parent;
 					if (__xpp._left == __x._parent) {
 						const BaseNode y = __xpp._right;
 						if (y.red) {
-							__x._parent.red = false;
+							__x._parent->red = false;
 							__xpp.red = true;
 							y.red = false;
 							__x = __xpp;
 						}
 						else {
-							if (__x == __x._parent._right) {
+							if (&__x == __x._parent->_right) {
 								__x = __x._parent;
-								rotate_left(__x);
+								rotate_left(&__x, _header._parent);
 							}
-							__x._parent.red = false;
+							__x._parent->red = false;
 							__xpp.red = true;
-							rotate_right(__xpp);
+							rotate_right(&__xpp, _header._parent);
 						}
 					}
 					else {
 						const BaseNode y = __xpp._left;
 						if (y.red) {
 							y.red = false;
-							__x._parent.red = false;
+							__x._parent->red = false;
 							__xpp.red = true;
 							__x = __xpp;
 						}
 						else {
-							if (__x == __x._parent._left) {
+							if (&__x == __x._parent->_left) {
 								__x = __x._parent;
-								rotate_right(__x);
+								rotate_right(&__x, _header._parent);
 							}
-							__x._parent.red = false;
+							__x._parent->red = false;
 							__xpp.red = true;
-							rotate_left(__x);
+							rotate_left(&__x, _header._parent);
 						}
 					}
 				}
-				_header._parent.red = false;
+				_header._parent->red = false;
 			}
 
-			std::pair<bool, iterator>	insert(_Val z) { // here
-				Node y = _header;
-				Node x = _header._parent;
+			auto	get_insert_pos(const _Key &_k) -> std::pair<_Base_ptr, _Base_ptr> {
+				BaseNode y = _header;
+				BaseNode x = _header._parent;
 				while (x) {
 					y = x;
-					if (z.value < x.value)
+
+					auto curr = static_cast<Node<_Val>*>(x);
+				
+					auto comp = _comp(_k, _KeyOfValue()(curr->value));
+				
+					x = comp ? x._left : x._right;
+				}
+				// check for uniqueness
+			}
+
+			template<typename _Arg>
+			auto	insert(_Arg &&_v) -> std::pair<iterator, bool> { // here
+					if (_comp)
 						x = x._left;
 					else if (z.value > x.value)
 						x = x._right;
@@ -152,6 +161,7 @@ namespace ft {
 				}
 				z._parent = y;
 				if (y == _header) {
+					z._parent = _header;
 					_header._parent = z;
 					_header._right = _header._left = z;
 				}
@@ -175,8 +185,8 @@ namespace ft {
 		private:
 			template< class _Up, class _Vp = std::remove_reference<_Up> >
 			static bool constexpr __usable_key =
-				std::disjunction<std::is_same<const _Vp, const Key>,
-				std::conjunction<std::is_scalar<_Vp>, std::is_scalar<Key> > >();
+				std::disjunction<std::is_same<const _Vp, const _Key>,
+				std::conjunction<std::is_scalar<_Vp>, std::is_scalar<_Key> > >();
 
 			template< class... Args >
 			void emplace_hint(iterator &pos, Args&&... args) {
@@ -228,7 +238,7 @@ namespace ft {
 				template <bool isConst>
 				class base_iterator {
 					public:
-						using node = Node;
+						using node = BaseNode;
 						using pointer_type = std::conditional_t<isConst, const node*, node*>;
 						using reference_type = std::conditional_t<isConst, const node&, node&>;
 						using T_type = node;

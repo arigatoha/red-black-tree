@@ -6,133 +6,144 @@
 #include <memory>
 #include <type_traits>
 
-/*
-Plan
-1) exception safety
-2) support of custom Allocator
-3) support of custom Comparator
-4) constexp
-...
-*/
-template <typename Key, typename T, 
-typename Compare = std::less<Key>,
-class Allocator = std::allocator<std::pair<const Key, T> > >
-class MyMap {
-	private:
-
-		ft::Rbtree<Key,T,Compare,Allocator>		_map_tree;
-
-        size_t      _sz;
-        Compare     _comp;
-		[[no_unique_address]] Allocator	_alloc;
-
-		void	deleteTree();
-		// Node<T>	*copyHelper(Node<T> *, Node<T> *);
-		// swap() ??
-	public:
-		struct Node;
-
-		template< class Iter, class NodeType >
-		struct insert_return_t;
-
-		template< bool isConst >
-		class base_iterator;
-
-	public:
-		using key_type = Key;
-		using mapped_type = T;
-		using value_type = std::pair<const Key, T>;
-		using size_type = std::size_t;
-		using difference_type = decltype(static_cast<int*>(nullptr) - static_cast<int*>(nullptr));
-		using reference = value_type &;
-		using const_reference = const value_type &;
-		using key_compare = Compare;
-		using allocator_type = Allocator;
-		using pointer = std::allocator_traits<Allocator>::pointer;
-		using const_pointer = std::allocator_traits<Allocator>::const_pointer;
-		using iterator = base_iterator<false>;
-        using const_iterator = base_iterator<true>;
-		using reverse_iterator = std::reverse_iterator<iterator>;
-		using const_reverse_iterator = std::reverse_iterator<const_iterator>;
-		using node_type = struct Node;
-		using insert_return_type = struct insert_return_t<iterator, node_type>; // iter const or not?
-
-	public:
-		MyMap() : _sz(0), _comp(), _alloc() {}
-		~MyMap() {}
-
-		MyMap(const MyMap &) = default;
-		MyMap(MyMap &&) = default;
-
-		MyMap &operator=(const MyMap &) = default;
-		MyMap &operator=(MyMap &&) = default;
-
-        template< class K >
-        T    &operator[](K &&x) {
-			
+namespace _rbmap { 
+	template< typename Pair>
+	struct Select1st {
+		const typename Pair::first_type&	operator()(const Pair &x) const {
+			return x.first;
 		}
-        T    &at(const Key &x) {
-            try {
-                return find(x);
-            } catch(...) {
-                throw std::out_of_range();
-            }
-        }
+	};
 
-		// template< class P >
-        // std::pair<iterator, bool>		insert(P &&value)
-		// requires requires {std::is_constructible<value_type, P&&>::value == true;}
-		// {
-		// 	return emplace(std::forward<P>(value));
-		// }
+	/*
+	Plan
+	1) exception safety
+	2) support of custom Allocator
+	3) support of custom Comparator
+	4) constexp
+	...
+	*/
+	template <typename Key, typename T, 
+	typename Compare = std::less<Key>,
+	class Allocator = std::allocator<std::pair<const Key, T> > >
+	class MyMap {
+		public:
+			struct Node;
 
-		template< class... Args >
-		std::pair<iterator, bool>		try_emplace(Args&&... args) {
-			_map_tree::try_emplace(args...);
-		}
-		iterator		find(const Key &x) {
-			return _map_tree.find(x);
-		}
+			template< class Iter, class NodeType >
+			struct insert_return_t;
 
-		const_iterator		find(const Key &x) const{
-			return _map_tree.find(x);
-		}
+			template< bool isConst >
+			class base_iterator;
 
-		iterator	lower_bound(const Key &x) {
-			return _map_tree.lower_bound(x);
-		}
+		public:
+			using key_type = Key;
+			using mapped_type = T;
+			using value_type = std::pair<const Key, T>;
+			using size_type = std::size_t;
+			using difference_type = decltype(static_cast<int*>(nullptr) - static_cast<int*>(nullptr));
+			using reference = value_type &;
+			using const_reference = const value_type &;
+			using key_compare = Compare;
+			using allocator_type = Allocator;
+			using pointer = std::allocator_traits<Allocator>::pointer;
+			using const_pointer = std::allocator_traits<Allocator>::const_pointer;
+			using iterator = base_iterator<false>;
+			using const_iterator = base_iterator<true>;
+			using reverse_iterator = std::reverse_iterator<iterator>;
+			using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+			using node_type = struct Node;
+			using insert_return_type = struct insert_return_t<iterator, node_type>; // iter const or not?
 
-		const_iterator	lower_bound(const Key &x) const{
-			return _map_tree.lower_bound(x);
-		}
+		private:
+			typedef typename std::allocator_traits<Allocator>::template rebind_alloc<value_type>	_Pair_alloc_t;
+			typedef ft::Rbtree<Key, value_type, Select1st<value_type>, Compare, _Pair_alloc_t>		_Rep_type;
 
-        // void		deleteNode(const T &);
-        // iterator	erase( const Key& key );
+			_Rep_type	_map_tree;
 
-		// constexpr if map is const then iterator is const ?
-        iterator   begin() {
-			return _map_tree.begin();
-		}
+			size_t      _sz;
+			Compare     _comp;
+			[[no_unique_address]] Allocator	_alloc;
 
-        const_iterator  begin() const {
-			return _map_tree.begin();
-		}
+			void	deleteTree();
+			// Node<T>	*copyHelper(Node<T> *, Node<T> *);
+			// swap() ??
+		public:
+			MyMap() : _sz(0), _comp(), _alloc() {}
+			~MyMap() {}
 
-        iterator   end() {
-			return _map_tree.end();
-        }
+			MyMap(const MyMap &) = default;
+			MyMap(MyMap &&) = default;
 
-        const_iterator   end() const {
-			return _map_tree.end();
-        }
+			MyMap &operator=(const MyMap &) = default;
+			MyMap &operator=(MyMap &&) = default;
 
-        // void	clear();
+			template< class K >
+			T    &operator[](K &&x) {
+				
+			}
+			T    &at(const Key &x) {
+				try {
+					return find(x);
+				} catch(...) {
+					throw std::out_of_range();
+				}
+			}
 
-        // template< class Iter, class NodeType >
-		// struct insert_return_t {
-		// 	Iter		pos;
-		// 	bool		inserted;
-		// 	NodeType	node;
-		// };
+			// template< class P >
+			// std::pair<iterator, bool>		insert(P &&value)
+			// requires requires {std::is_constructible<value_type, P&&>::value == true;}
+			// {
+			// 	return emplace(std::forward<P>(value));
+			// }
 
-};
+			template< class... Args >
+			std::pair<iterator, bool>		try_emplace(Args&&... args) {
+				_map_tree.try_emplace(args...);
+			}
+			iterator		find(const Key &x) {
+				return _map_tree.find(x);
+			}
+
+			const_iterator		find(const Key &x) const{
+				return _map_tree.find(x);
+			}
+
+			iterator	lower_bound(const Key &x) {
+				return _map_tree.lower_bound(x);
+			}
+
+			const_iterator	lower_bound(const Key &x) const{
+				return _map_tree.lower_bound(x);
+			}
+
+			// void		deleteNode(const T &);
+			// iterator	erase( const Key& key );
+
+			// constexpr if map is const then iterator is const ?
+			iterator   begin() {
+				return _map_tree.begin();
+			}
+
+			const_iterator  begin() const {
+				return _map_tree.begin();
+			}
+
+			iterator   end() {
+				return _map_tree.end();
+			}
+
+			const_iterator   end() const {
+				return _map_tree.end();
+			}
+
+			// void	clear();
+
+			// template< class Iter, class NodeType >
+			// struct insert_return_t {
+			// 	Iter		pos;
+			// 	bool		inserted;
+			// 	NodeType	node;
+			// };
+
+	};
+}
