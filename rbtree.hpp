@@ -92,7 +92,7 @@ namespace ft {
 				__x->_parent = __y;
 			}
 
-			void insert_fixup(BaseNode &__x) {
+			void insert_fixup(BaseNode &__x, bool insert_left) {
 				while (&__x != _header._parent && __x._parent->red) {
 					const BaseNode __xpp = __x._parent->_parent;
 					if (__xpp._left == __x._parent) {
@@ -104,7 +104,7 @@ namespace ft {
 							__x = __xpp;
 						}
 						else {
-							if (&__x == __x._parent->_right) {
+							if (!insert_left) {
 								__x = __x._parent;
 								rotate_left(&__x, _header._parent);
 							}
@@ -122,7 +122,7 @@ namespace ft {
 							__x = __xpp;
 						}
 						else {
-							if (&__x == __x._parent->_left) {
+							if (insert_left) {
 								__x = __x._parent;
 								rotate_right(&__x, _header._parent);
 							}
@@ -135,52 +135,61 @@ namespace ft {
 				_header._parent->red = false;
 			}
 
+			/* return the pair of child and parent*/
 			auto	get_insert_pos(const _Key &_k) -> std::pair<_Base_ptr, _Base_ptr> {
 				BaseNode y = _header;
 				BaseNode x = _header._parent;
+				bool comp;
 				while (x) {
 					y = x;
 
 					auto curr = static_cast<Node<_Val>*>(x);
 				
-					auto comp = _comp(_k, _KeyOfValue()(curr->value));
+					comp = _comp(_k, _KeyOfValue()(curr->value));
 				
 					x = comp ? x._left : x._right;
 				}
-				// check for uniqueness
+				iterator par = iterator(y);
+				if (comp) {
+					if (par == begin())
+						return std::make_pair{nullptr, &y};
+
+					--par;
+
+					if (!_comp(_KeyOfValue()(*par), _k))
+						return std::make_pair{par._ptr, nullptr};
+
+					return std::make_pair{nullptr, &y};
+				}
+				else {
+					if (!_comp(_KeyOfValue()(*par), _k))
+						return std::make_pair{par._ptr, nullptr};
+					return std::make_pair{nullptr, &y};
+				}
+			}
+
+			bool	isInsertLeft(const _Key &child_k, const BaseNode &par) const noexcept {
+				return _comp(child_k, _KeyOfValue()(static_cast<Node>(par).value));
 			}
 
 			template<typename _Arg>
 			auto	insert(_Arg &&_v) -> std::pair<iterator, bool> { // here
-					if (_comp)
-						x = x._left;
-					else if (z.value > x.value)
-						x = x._right;
-					else
-						return {false, iterator(x)};
-				}
-				z._parent = y;
-				if (y == _header) {
-					z._parent = _header;
-					_header._parent = z;
-					_header._right = _header._left = z;
-				}
-				else if (z.value < y.value) {
-					y._left = z;
-					if (y == _header._left)
-						_header._left = z;
-				}
-				else {
-					y._right = z;
-					if (y == _header._right)
-						_header._right = z;
-				}
-				z.red = true;
-				z._left = nullptr;
-				z._right = nullptr;
-		(z);
+				auto pos = get_insert_pos(_KeyOfValue()(_v));
+
+				if (pos.first)
+					return std::make_pair(iterator(pos.first), false);
 				
-				return {true, iterator(z)};
+				if (!pos.second) {
+					bool insert_left = isInsertLeft(_KeyOfValue()(_v), pos.second);
+					BaseNode *alloc_pos = insert_left ? pos.second._left : pos.second._right; 
+				}
+
+				auto new_node = node_traits::allocate(NodeAlloc, 1);
+				node_traits::construct(NodeAlloc, new_node, std::forward<_Arg>(_v));
+
+				// link to parent, create nullptr children, check edge cases when the first element.
+
+				insert_fixup(, insert_left);
 			}
 		private:
 			template< class _Up, class _Vp = std::remove_reference<_Up> >
@@ -268,12 +277,12 @@ namespace ft {
 							return *this;
 						}
 
-						node    &operator*() {
-							return *_ptr;
+						Node	&operator*() const{
+							return static_cast<Node<_Val>*>(_ptr)->value;
 						}
 
-						base_iterator *operator->() {
-							return this;
+						Node	*operator->() const{
+							return &(static_cast<Node<_Val>*>(_ptr)->value);
 						}
 
 					private:
