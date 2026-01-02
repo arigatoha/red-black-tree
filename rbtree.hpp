@@ -188,8 +188,21 @@ namespace ft {
 				node_traits::construct(NodeAlloc, new_node, std::forward<_Arg>(_v));
 
 				// link to parent, create nullptr children, check edge cases when the first element.
+				if (pos.second == _header) {
+					_header._parent = new_node;
+				}
+				// update min and max
+				new_node._parent = pos.second;
+				new_node._left = nullptr;
+				new_node._right = nullptr;
+				new_node.red = true;
+				if (insert_left)
+					pos.second._left = new_node;
+				else
+					pos.second._right = new_node;
 
-				insert_fixup(, insert_left);
+				insert_fixup(static_cast<BaseNode>(new_node), insert_left);
+				return std::make_pair(iterator(pos.first), true);
 			}
 		private:
 			template< class _Up, class _Vp = std::remove_reference<_Up> >
