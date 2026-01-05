@@ -47,16 +47,16 @@ namespace _rbmap {
 			using allocator_type = Allocator;
 			using pointer = std::allocator_traits<Allocator>::pointer;
 			using const_pointer = std::allocator_traits<Allocator>::const_pointer;
-			using iterator = base_iterator<false>;
-			using const_iterator = base_iterator<true>;
-			using reverse_iterator = std::reverse_iterator<iterator>;
-			using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+			// using reverse_iterator = std::reverse_iterator<iterator>;
+			// using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 			using node_type = struct Node;
-			using insert_return_type = struct insert_return_t<iterator, node_type>; // iter const or not?
+			// using insert_return_type = struct insert_return_t<iterator, node_type>; // iter const or not?
 
 		private:
 			typedef typename std::allocator_traits<Allocator>::template rebind_alloc<value_type>	_Pair_alloc_t;
 			typedef ft::Rbtree<Key, value_type, Select1st<value_type>, Compare, _Pair_alloc_t>		_Rep_type;
+			typedef typename _Rep_type::iterator													iterator;
+			typedef typename _Rep_type::const_iterator												const_iterator;
 
 			_Rep_type	_map_tree;
 
@@ -97,8 +97,8 @@ namespace _rbmap {
 			// }
 
 			template< class... Args >
-			std::pair<iterator, bool>		try_emplace(Args&&... args) {
-				_map_tree.try_emplace(args...);
+			std::pair<iterator, bool>		try_emplace(const Key &k, Args&&... args) {
+				_map_tree.try_emplace(k, std::forward<Args>(args)...);
 			}
 			iterator		find(const Key &x) {
 				return _map_tree.find(x);
@@ -114,6 +114,11 @@ namespace _rbmap {
 
 			const_iterator	lower_bound(const Key &x) const{
 				return _map_tree.lower_bound(x);
+			}
+
+			template <typename Arg>
+			std::pair<iterator, bool>	insert(Arg&& args) {
+				return _map_tree.insert(std::forward<Arg>(args));
 			}
 
 			// void		deleteNode(const T &);

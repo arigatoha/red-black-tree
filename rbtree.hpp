@@ -174,7 +174,7 @@ namespace ft {
 			}
 
 			template<typename _Arg>
-			auto	insert(_Arg &&_v) -> std::pair<iterator, bool> { // here
+			auto	insert(_Arg&& _v) -> std::pair<iterator, bool> { // here
 				auto pos = get_insert_pos(_KeyOfValue()(_v));
 
 				if (pos.first)
@@ -230,7 +230,7 @@ namespace ft {
 
 		public:
 			template< class... Args >
-			std::pair<iterator, bool>		try_emplace(Args&&... args) {
+			std::pair<iterator, bool>		try_emplace(const _Key &k, Args&&... args) {
 				// test to pass more than 1 right pair, might need another if constexpr
 				auto&& [_a, _v] = std::make_pair<Args&&...>(args...); // 1 or 2 ampersands?
 				if constexpr (__usable_key<decltype(_a)>) {
@@ -303,6 +303,8 @@ namespace ft {
 							return &(static_cast<Node<_Val>*>(_ptr)->value);
 						}
 
+						template <typename, typename, typename, typename, typename>
+						friend class Rbtree;
 					private:
 						pointer_type	_ptr;
 						base_iterator(node *n) : _ptr(n) {}
