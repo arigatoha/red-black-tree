@@ -24,29 +24,30 @@ namespace ft {
 	typename _Alloc = std::allocator<_Val> >
 	class Rbtree {
 		public:
-			Rbtree() {
-				_header.red = true;
-				_header._parent = nullptr;
-				_header._left = _header._right = &_header;
-			}
-			Rbtree(const _Compare &comparator);
-			Rbtree(const _Alloc &allocator);
-			Rbtree(const _Compare &comparator, const _Alloc &allocator);
-
-			~Rbtree() = default;
-
-			Rbtree(const Rbtree &) = default; // need deep copy I reckon TODO
-			Rbtree(Rbtree &&) = default; // TODO
-
-			Rbtree &operator=(const Rbtree &) = default;
+		Rbtree() {
+			_header.red = true;
+			_header._parent = nullptr;
+			_header._left = _header._right = &_header;
+		}
+		Rbtree(const _Compare &comparator);
+		Rbtree(const _Alloc &allocator);
+		Rbtree(const _Compare &comparator, const _Alloc &allocator);
 		
-			template< bool isConst >
-			class base_iterator;
-			using iterator = base_iterator<false>;
-			using const_iterator = base_iterator<true>;
-
-			using NodeAlloc = typename std::allocator_traits<_Alloc>::template rebind_alloc<Node>;
-			using node_traits = std::allocator_traits<NodeAlloc>;
+		~Rbtree() = default;
+		
+		Rbtree(const Rbtree &) = default; // need deep copy I reckon TODO
+		Rbtree(Rbtree &&) = default; // TODO
+		
+		Rbtree &operator=(const Rbtree &) = default;
+		
+		template< bool isConst >
+		class base_iterator;
+		using iterator = base_iterator<false>;
+		using const_iterator = base_iterator<true>;
+		
+		using NodeAlloc = typename std::allocator_traits<_Alloc>::template rebind_alloc<Node<_Val>>;
+		using node_traits = std::allocator_traits<NodeAlloc>;
+		using Base_ptr = ft::BaseNode::_Base_ptr;
 		private:
 			[[no_unique_address]] NodeAlloc	_node_alloc;
 			[[no_unique_address]] _Compare	_comp;
@@ -94,12 +95,12 @@ namespace ft {
 
 			void insert_fixup(BaseNode &__x, bool insert_left) {
 				while (&__x != _header._parent && __x._parent->red) {
-					const BaseNode __xpp = __x._parent->_parent;
-					if (__xpp._left == __x._parent) {
-						const BaseNode y = __xpp._right;
+					const Base_ptr __xpp = __x._parent->_parent;
+					if (__xpp->_left == __x._parent) {
+						const BaseNode y = __xpp->_right;
 						if (y.red) {
 							__x._parent->red = false;
-							__xpp.red = true;
+							__xpp->red = true;
 							y.red = false;
 							__x = __xpp;
 						}
@@ -109,16 +110,16 @@ namespace ft {
 								rotate_left(&__x, _header._parent);
 							}
 							__x._parent->red = false;
-							__xpp.red = true;
-							rotate_right(&__xpp, _header._parent);
+							__xpp->red = true;
+							rotate_right(__xpp, _header._parent);
 						}
 					}
 					else {
-						const BaseNode y = __xpp._left;
+						const BaseNode y = __xpp->_left;
 						if (y.red) {
 							y.red = false;
 							__x._parent->red = false;
-							__xpp.red = true;
+							__xpp->red = true;
 							__x = __xpp;
 						}
 						else {
@@ -127,7 +128,7 @@ namespace ft {
 								rotate_right(&__x, _header._parent);
 							}
 							__x._parent->red = false;
-							__xpp.red = true;
+							__xpp->red = true;
 							rotate_left(&__x, _header._parent);
 						}
 					}
@@ -136,11 +137,11 @@ namespace ft {
 			}
 
 			/* return the pair of child and parent*/
-			auto	get_insert_pos(const _Key &_k) -> std::pair<_Base_ptr, _Base_ptr> {
+			auto	get_insert_pos(const _Key &_k) -> std::pair<Base_ptr, Base_ptr> {
 				BaseNode y = _header;
 				BaseNode x = _header._parent;
 				bool comp;
-				while (x) {
+				while (&x != nullptr) {
 					y = x;
 
 					auto curr = static_cast<Node<_Val>*>(x);
@@ -150,26 +151,26 @@ namespace ft {
 					x = comp ? x._left : x._right;
 				}
 				iterator par = iterator(y);
-				if (comp) {
+				if (!comp) {
+					if (!_comp(_KeyOfValue()(*par), _k))
+						return std::make_pair(par._ptr, nullptr);
+					return std::make_pair(nullptr, &y);
+				}
+				else {
 					if (par == begin())
-						return std::make_pair{nullptr, &y};
+						return std::make_pair(nullptr, &y);
 
 					--par;
 
 					if (!_comp(_KeyOfValue()(*par), _k))
-						return std::make_pair{par._ptr, nullptr};
+						return std::make_pair(par._ptr, nullptr);
 
-					return std::make_pair{nullptr, &y};
-				}
-				else {
-					if (!_comp(_KeyOfValue()(*par), _k))
-						return std::make_pair{par._ptr, nullptr};
-					return std::make_pair{nullptr, &y};
+					return std::make_pair(nullptr, &y);
 				}
 			}
 
 			bool	isInsertLeft(const _Key &child_k, const BaseNode &par) const noexcept {
-				return _comp(child_k, _KeyOfValue()(static_cast<Node>(par).value));
+				return _comp(child_k, _KeyOfValue()(static_cast<Node<_Val>>(par).value));
 			}
 
 			template<typename _Arg>
@@ -179,17 +180,22 @@ namespace ft {
 				if (pos.first)
 					return std::make_pair(iterator(pos.first), false);
 				
-				if (!pos.second) {
-					bool insert_left = isInsertLeft(_KeyOfValue()(_v), pos.second);
-					BaseNode *alloc_pos = insert_left ? pos.second._left : pos.second._right; 
-				}
+				bool insert_left = isInsertLeft(_KeyOfValue()(_v), pos.second);
+				BaseNode *alloc_pos = insert_left ? pos.second._left : pos.second._right; 
 
-				auto new_node = node_traits::allocate(NodeAlloc, 1);
-				node_traits::construct(NodeAlloc, new_node, std::forward<_Arg>(_v));
+				auto new_node = node_traits::allocate(_node_alloc, 1);
+				node_traits::construct(_node_alloc, new_node, std::forward<_Arg>(_v));
 
 				// link to parent, create nullptr children, check edge cases when the first element.
 				if (pos.second == _header) {
 					_header._parent = new_node;
+					_header._left = _header._right = new_node;
+				}
+				else if (insert_left && pos.second == _header._left) {
+					_header._left = new_node;
+				}
+				else {
+					_header._right = new_node;
 				}
 				// update min and max
 				new_node._parent = pos.second;
@@ -200,7 +206,6 @@ namespace ft {
 					pos.second._left = new_node;
 				else
 					pos.second._right = new_node;
-
 				insert_fixup(static_cast<BaseNode>(new_node), insert_left);
 				return std::make_pair(iterator(pos.first), true);
 			}
@@ -218,8 +223,8 @@ namespace ft {
 					check if tree is balanced
 					rotate tree
 				*/
-				node_traits::allocate(NodeAlloc, 1);
-				node_traits::construct(NodeAlloc, pos, std::forward<Args>(args)...);
+				node_traits::allocate(_node_alloc, 1);
+				node_traits::construct(_node_alloc, pos, std::forward<Args>(args)...);
 				insert_fixup();
 			}
 
@@ -229,7 +234,7 @@ namespace ft {
 				// test to pass more than 1 right pair, might need another if constexpr
 				auto&& [_a, _v] = std::make_pair<Args&&...>(args...); // 1 or 2 ampersands?
 				if constexpr (__usable_key<decltype(_a)>) {
-					const Key &__k = _a;
+					const _Key &__k = _a;
 					iterator it = lower_bound(__k);
 					if (it == end() || (*it).first != __k) {
 						emplace_hint(it, std::forward<Args>(args)...);
@@ -290,11 +295,11 @@ namespace ft {
 							return *this;
 						}
 
-						Node	&operator*() const{
+						Node<_Val>	&operator*() const{
 							return static_cast<Node<_Val>*>(_ptr)->value;
 						}
 
-						Node	*operator->() const{
+						Node<_Val>	*operator->() const{
 							return &(static_cast<Node<_Val>*>(_ptr)->value);
 						}
 
@@ -313,7 +318,7 @@ namespace ft {
 									x = y;
 									y = y._parent;
 								}
-								if (x->_right == y)
+								if (x->_right == &y)
 									x = y; // single node
 							}
 							return x;
