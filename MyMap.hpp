@@ -68,7 +68,9 @@ namespace _rbmap {
 			// Node<T>	*copyHelper(Node<T> *, Node<T> *);
 			// swap() ??
 		public:
-			MyMap() : _sz(0), _comp(), _alloc() {}
+			MyMap() : _sz(0), _comp(), _alloc() {
+				_map_tree = _Rep_type(); //HERE
+			}
 			~MyMap() {}
 
 			MyMap(const MyMap &) = default;

@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <memory>
 #include <type_traits>
+#include <iostream>
 
 namespace ft {
 	struct BaseNode {
@@ -17,6 +18,13 @@ namespace ft {
 
 	template< typename _Val >
 	struct Node : public BaseNode {
+		Node(const _Val &v) : value(v) {
+			_parent = nullptr;
+			_right = nullptr;
+			_left = nullptr;
+			red = true;
+		}
+
 		_Val			value;		
 	};
 
@@ -29,11 +37,26 @@ namespace ft {
 			_header._parent = nullptr;
 			_header._left = _header._right = &_header;
 		}
-		Rbtree(const _Compare &comparator);
-		Rbtree(const _Alloc &allocator);
-		Rbtree(const _Compare &comparator, const _Alloc &allocator);
+		Rbtree(const _Compare &comparator) : _comp(comparator) { Rbtree();}
+		Rbtree(const _Alloc &allocator) : _node_alloc(allocator) { Rbtree();}
+		Rbtree(const _Compare &comparator, const _Alloc &allocator) : _comp(comparator), _node_alloc(allocator) { Rbtree();}
 		
-		~Rbtree() = default;
+		void	deleteTree(BaseNode *n) {
+			if (n == nullptr)
+				return;
+
+			deleteTree(n->_left);
+			deleteTree(n->_right);
+
+			Node<_Val> *actual_node = static_cast<Node<_Val>*>(n);
+
+			node_traits::deallocate(_node_alloc, actual_node, 1);
+			node_traits::destroy(_node_alloc, actual_node);
+		}
+
+		~Rbtree() {
+			deleteTree(&_header);
+		}
 		
 		Rbtree(const Rbtree &) = default; // need deep copy I reckon TODO
 		Rbtree(Rbtree &&) = default; // TODO
@@ -138,8 +161,11 @@ namespace ft {
 
 			/* return the pair of child and parent*/
 			auto	get_insert_pos(const _Key &_k) -> std::pair<Base_ptr, Base_ptr> {
-				Base_ptr y = &_header;
 				Base_ptr x = _header._parent;
+				if (x == nullptr)
+					return std::make_pair(nullptr, nullptr);
+				
+				Base_ptr y = _header._parent->_parent;
 				bool comp;
 				while (x != nullptr) {
 					y = x;
@@ -169,32 +195,46 @@ namespace ft {
 				}
 			}
 
-			bool	isInsertLeft(const _Key &child_k, const BaseNode &par) const noexcept {
-				return _comp(child_k, _KeyOfValue()(static_cast<Node<_Val>>(par).value));
+			bool	isInsertLeft(const _Key &child_k, BaseNode *par) const noexcept {
+				return _comp(child_k, _KeyOfValue()(static_cast<Node<_Val>*>(par)->value));
+				// return _comp(child_k, _KeyOfValue()())
 			}
+
+			private:
+			template <typename _Arg>
+			auto	_insert_first_ele(_Arg&& _v) -> std::pair<iterator, bool> {
+				auto new_node = node_traits::allocate(_node_alloc, 1);
+				node_traits::construct(_node_alloc, new_node, std::forward<_Arg>(_v));
+				
+				_header._parent = new_node;
+				_header._left = _header._right = new_node;
+				new_node->_parent = &_header;
+				new_node->_left = nullptr;
+				new_node->_right = nullptr;
+				new_node->red = false;
+
+				return std::make_pair(iterator(new_node), true);
+			}
+
+			public:
 
 			template<typename _Arg>
 			auto	insert(_Arg&& _v) -> std::pair<iterator, bool> { // here
 				auto pos = get_insert_pos(_KeyOfValue()(_v));
-
+				if (!pos.first && !pos.second)
+					return _insert_first_ele(std::forward<_Arg>(_v));
 				if (pos.first)
 					return std::make_pair(iterator(pos.first), false);
 				
-				bool insert_left = isInsertLeft(_KeyOfValue()(_v), *pos.second);
-				BaseNode *alloc_pos = insert_left ? pos.second->_left : pos.second->_right; 
+				bool insert_left = isInsertLeft(_KeyOfValue()(_v), pos.second);
 
 				auto new_node = node_traits::allocate(_node_alloc, 1);
 				node_traits::construct(_node_alloc, new_node, std::forward<_Arg>(_v));
 
-				// link to parent, create nullptr children, check edge cases when the first element.
-				if (pos.second == &_header) {
-					_header._parent = new_node;
-					_header._left = _header._right = new_node;
-				}
-				else if (insert_left && pos.second == _header._left) {
+				if (insert_left && pos.second == _header._left) {
 					_header._left = new_node;
 				}
-				else {
+				else if (!insert_left && pos.second == _header._right) {
 					_header._right = new_node;
 				}
 				// update min and max
@@ -207,7 +247,7 @@ namespace ft {
 				else
 					pos.second->_right = new_node;
 				insert_fixup(static_cast<Base_ptr>(new_node), insert_left);
-				return std::make_pair(iterator(pos.first), true);
+				return std::make_pair(iterator(new_node), true);
 			}
 		private:
 			template< class _Up, class _Vp = std::remove_reference<_Up> >
@@ -298,21 +338,21 @@ namespace ft {
 						base_iterator	operator--(int) noexcept{
 							base_iterator copy = *this;
 
-							_ptr = rbtree_iterator_decrement;
+							_ptr = rbtree_iterator_decrement(_ptr);
 							return copy;
 						}
 
 						base_iterator	&operator--() noexcept{
-							_ptr = rbtree_iterator_decrement;
+							_ptr = rbtree_iterator_decrement(_ptr);
 
 							return *this;
 						}
 
-						Node<_Val>	&operator*() const noexcept{
+						_Val	&operator*() const noexcept{
 							return static_cast<Node<_Val>*>(_ptr)->value;
 						}
 
-						Node<_Val>	*operator->() const noexcept{
+						_Val	*operator->() const noexcept{
 							return &(static_cast<Node<_Val>*>(_ptr)->value);
 						}
 
@@ -331,8 +371,8 @@ namespace ft {
 						base_iterator(node *n) : _ptr(n) {}
 				
 						Base_ptr	rbtree_iterator_decrement(Base_ptr x) {
-							if (x == &_header)
-								return _header._right;
+							if (x->red && x->_parent->_parent == x)
+								return x->_right;
 							if (x->_left) {
 								x = x->_left;
 								while (x->_right) {
@@ -341,7 +381,7 @@ namespace ft {
 								return x;
 							}
 							else {
-								const Base_ptr y = x->_parent;
+								Base_ptr y = x->_parent;
 								while (y->_left == x) {
 									x = y;
 									y = x->_parent;
@@ -356,7 +396,7 @@ namespace ft {
 								x = x->_left;
 							}
 							else { 
-								const Base_ptr y = x->_parent;
+								Base_ptr y = x->_parent;
 								while (x == y->_right) {
 									x = y;
 									y = y->_parent;
