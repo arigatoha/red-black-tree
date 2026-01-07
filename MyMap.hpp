@@ -58,20 +58,19 @@ namespace _rbmap {
 			typedef typename _Rep_type::iterator													iterator;
 			typedef typename _Rep_type::const_iterator												const_iterator;
 
-			_Rep_type	_map_tree;
-
 			size_t      _sz;
 			Compare     _comp;
 			[[no_unique_address]] Allocator	_alloc;
+			
+			_Rep_type	_map_tree;
 
 			void	deleteTree();
 			// Node<T>	*copyHelper(Node<T> *, Node<T> *);
 			// swap() ??
 		public:
-			MyMap() : _sz(0), _comp(), _alloc() {
-				_map_tree = _Rep_type(); //HERE
+			MyMap() : _sz(0), _comp(), _alloc(), _map_tree(_comp, _alloc) {
 			}
-			~MyMap() {}
+			~MyMap() = default;
 
 			MyMap(const MyMap &) = default;
 			MyMap(MyMap &&) = default;

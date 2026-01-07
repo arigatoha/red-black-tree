@@ -28,7 +28,7 @@ namespace ft {
 		_Val			value;		
 	};
 
-	template <typename _Key, typename _Val, typename _KeyOfValue, typename _Compare,
+	template <typename _Key, typename _Val, typename _KeyOfValue, typename _Compare = std::less<_Key>,
 	typename _Alloc = std::allocator<_Val> >
 	class Rbtree {
 		public:
@@ -37,14 +37,21 @@ namespace ft {
 			_header._parent = nullptr;
 			_header._left = _header._right = &_header;
 		}
-		Rbtree(const _Compare &comparator) : _comp(comparator) { Rbtree();}
-		Rbtree(const _Alloc &allocator) : _node_alloc(allocator) { Rbtree();}
-		Rbtree(const _Compare &comparator, const _Alloc &allocator) : _comp(comparator), _node_alloc(allocator) { Rbtree();}
+		Rbtree(const _Compare &comparator) : Rbtree() {
+			_comp = comparator;
+		}
+		Rbtree(const _Alloc &allocator) : Rbtree() {
+			_node_alloc = allocator;
+		}
+		Rbtree(const _Compare &comparator, const _Alloc &allocator) : Rbtree() {
+			_comp = comparator;
+			_node_alloc = allocator;
+		}
 		
 		void	deleteTree(BaseNode *n) {
-			if (n == nullptr)
+			if (n == nullptr) {
 				return;
-
+			}
 			deleteTree(n->_left);
 			deleteTree(n->_right);
 
@@ -55,7 +62,7 @@ namespace ft {
 		}
 
 		~Rbtree() {
-			deleteTree(&_header);
+			deleteTree(_header._parent);
 		}
 		
 		Rbtree(const Rbtree &) = default; // need deep copy I reckon TODO
@@ -72,9 +79,9 @@ namespace ft {
 		using node_traits = std::allocator_traits<NodeAlloc>;
 		using Base_ptr = ft::BaseNode::_Base_ptr;
 		private:
-			[[no_unique_address]] NodeAlloc	_node_alloc;
-			[[no_unique_address]] _Compare	_comp;
-		
+			_Compare	_comp;
+			NodeAlloc	_node_alloc;
+		// [[no_unique_address]] 
 			BaseNode    _header;
 		
 		public:
